@@ -1,0 +1,108 @@
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
+
+export default function AdminPage() {
+  // Dummy data for charts
+  const jobStats = [
+    { name: 'Mon', jobs: 12, applications: 45 },
+    { name: 'Tue', jobs: 15, applications: 52 },
+    { name: 'Wed', jobs: 18, applications: 68 },
+    { name: 'Thu', jobs: 14, applications: 58 },
+    { name: 'Fri', jobs: 20, applications: 75 },
+    { name: 'Sat', jobs: 8, applications: 32 },
+    { name: 'Sun', jobs: 5, applications: 18 },
+  ];
+
+  const laborDemand = [
+    { month: 'Jan', demand: 120 },
+    { month: 'Feb', demand: 150 },
+    { month: 'Mar', demand: 180 },
+    { month: 'Apr', demand: 200 },
+    { month: 'May', demand: 250 },
+    { month: 'Jun', demand: 280 },
+  ];
+
+  const categoryStats = [
+    { category: 'Harvesting', jobs: 45, workers: 120 },
+    { category: 'Planting', jobs: 32, workers: 85 },
+    { category: 'Irrigation', jobs: 18, workers: 45 },
+    { category: 'Other', jobs: 15, workers: 35 },
+  ];
+
+  return (
+    <div className="min-h-screen bg-gray-50 pb-20">
+      <div className="bg-primary text-white p-6 shadow-md">
+        <h1 className="text-2xl font-bold">Admin Dashboard</h1>
+        <p className="text-sm mt-1 opacity-90">Statistics and forecasts</p>
+      </div>
+
+      <div className="p-4 space-y-6">
+        {/* Summary Cards */}
+        <div className="grid grid-cols-2 gap-4">
+          <div className="bg-white rounded-lg shadow-md p-4 text-center">
+            <div className="text-3xl mb-2">📊</div>
+            <div className="text-2xl font-bold text-gray-800">110</div>
+            <div className="text-sm text-gray-600">Active Jobs</div>
+          </div>
+          <div className="bg-white rounded-lg shadow-md p-4 text-center">
+            <div className="text-3xl mb-2">👥</div>
+            <div className="text-2xl font-bold text-gray-800">285</div>
+            <div className="text-sm text-gray-600">Applications</div>
+          </div>
+        </div>
+
+        {/* Weekly Job Stats */}
+        <div className="bg-white rounded-lg shadow-md p-4">
+          <h2 className="text-lg font-semibold mb-4">Jobs and Applications (This Week)</h2>
+          <ResponsiveContainer width="100%" height={200}>
+            <BarChart data={jobStats}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="name" />
+              <YAxis />
+              <Tooltip />
+              <Bar dataKey="jobs" fill="#22c55e" name="Jobs" />
+              <Bar dataKey="applications" fill="#3b82f6" name="Applications" />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+
+        {/* Labor Demand Forecast */}
+        <div className="bg-white rounded-lg shadow-md p-4">
+          <h2 className="text-lg font-semibold mb-4">Labor Demand Forecast</h2>
+          <ResponsiveContainer width="100%" height={200}>
+            <LineChart data={laborDemand}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="month" />
+              <YAxis />
+              <Tooltip />
+              <Line type="monotone" dataKey="demand" stroke="#22c55e" strokeWidth={2} name="Demand" />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+
+        {/* Category Breakdown */}
+        <div className="bg-white rounded-lg shadow-md p-4">
+          <h2 className="text-lg font-semibold mb-4">Jobs by Category</h2>
+          <div className="space-y-3">
+            {categoryStats.map((stat) => (
+              <div key={stat.category} className="flex items-center justify-between">
+                <div className="flex-1">
+                  <div className="flex justify-between mb-1">
+                    <span className="text-sm font-medium">{stat.category}</span>
+                    <span className="text-sm text-gray-600">{stat.jobs} jobs</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div
+                      className="bg-primary h-2 rounded-full"
+                      style={{ width: `${(stat.jobs / 50) * 100}%` }}
+                    />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
