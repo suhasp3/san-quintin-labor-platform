@@ -41,27 +41,26 @@ export default function JobsPage() {
         // You could upload it here: await uploadAudio(jobId, audioBlob);
       }
 
-      // Find the job and create a contract
-      const job = jobs.find((j) => j.id === jobId);
-      if (job) {
-        const newContract: Contract = {
-          id: Date.now(),
-          jobId: job.id,
-          jobTitle: job.title,
-          pay: job.pay,
-          location: job.location,
-          date: job.date,
-          status: 'pending',
-        };
+      // Create contract via API
+      const response = await fetch('http://localhost:8000/contracts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ job_id: jobId }),
+      });
 
-        // Save to localStorage
-        const existingContracts = localStorage.getItem('contracts');
-        const contracts: Contract[] = existingContracts
-          ? JSON.parse(existingContracts)
-          : [];
-        contracts.push(newContract);
-        localStorage.setItem('contracts', JSON.stringify(contracts));
+      if (!response.ok) {
+        throw new Error('Failed to create contract');
       }
+
+      const newContract: Contract = await response.json();
+      
+      // Also save to localStorage as backup
+      const existingContracts = localStorage.getItem('contracts');
+      const contracts: Contract[] = existingContracts
+        ? JSON.parse(existingContracts)
+        : [];
+      contracts.push(newContract);
+      localStorage.setItem('contracts', JSON.stringify(contracts));
 
       alert('Application submitted! The employer will review your application.');
     } catch (err) {

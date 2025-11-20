@@ -5,12 +5,31 @@ export default function MyContractsPage() {
   const [contracts, setContracts] = useState<Contract[]>([]);
 
   useEffect(() => {
-    // Load contracts from localStorage or API
-    const savedContracts = localStorage.getItem('contracts');
-    if (savedContracts) {
-      setContracts(JSON.parse(savedContracts));
-    }
+    fetchContracts();
   }, []);
+
+  const fetchContracts = async () => {
+    try {
+      const response = await fetch('http://localhost:8000/contracts');
+      if (response.ok) {
+        const data = await response.json();
+        setContracts(data);
+      } else {
+        // Fallback to localStorage if API fails
+        const savedContracts = localStorage.getItem('contracts');
+        if (savedContracts) {
+          setContracts(JSON.parse(savedContracts));
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching contracts:', error);
+      // Fallback to localStorage
+      const savedContracts = localStorage.getItem('contracts');
+      if (savedContracts) {
+        setContracts(JSON.parse(savedContracts));
+      }
+    }
+  };
 
   const getStatusColor = (status: Contract['status']) => {
     switch (status) {

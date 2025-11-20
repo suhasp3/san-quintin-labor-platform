@@ -1,6 +1,83 @@
-# React + TypeScript + Vite
+# Mexico Labor Project
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Mobile-based employment system for agricultural day laborers in San Quintín, Baja California.
+
+## Project Overview
+
+This project creates a low-text, icon-based, voice-enabled mobile application to formalize hiring practices and connect workers with growers. The system uses a Poisson process to model job arrivals and provides analytics for labor demand forecasting.
+
+## Tech Stack
+
+- **Frontend**: React + TypeScript + Vite
+- **Backend**: FastAPI (Python)
+- **Data Generation**: Poisson process for job arrivals
+- **Styling**: Tailwind CSS
+
+## Setup Instructions
+
+### Backend Setup
+
+1. Navigate to the backend directory:
+```bash
+cd backend
+```
+
+2. Create a virtual environment (recommended):
+```bash
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+```
+
+3. Install dependencies:
+```bash
+pip install -r requirements.txt
+```
+
+4. Run the backend server:
+```bash
+uvicorn main:app --reload --port 8000
+```
+
+The API will be available at `http://localhost:8000`
+- API Documentation: `http://localhost:8000/docs`
+- ReDoc: `http://localhost:8000/redoc`
+
+### Frontend Setup
+
+1. Install dependencies:
+```bash
+npm install
+```
+
+2. Run the development server:
+```bash
+npm run dev
+```
+
+The frontend will be available at `http://localhost:5173`
+
+## Features
+
+- **Job Discovery**: Browse available agricultural jobs with icon-based navigation
+- **Voice Applications**: Apply to jobs using voice recordings (low-literacy support)
+- **Digital Contracts**: Track job applications and contract status
+- **Admin Dashboard**: View statistics, labor demand forecasts, and job analytics
+- **Poisson Process Modeling**: Realistic job arrival simulation for research
+
+## API Endpoints
+
+See `backend/README.md` for detailed API documentation.
+
+## Project Structure
+
+```
+├── backend/          # FastAPI backend with Poisson process data generation
+├── src/              # React frontend application
+│   ├── components/   # Reusable UI components
+│   ├── pages/        # Page components
+│   └── utils/        # Utility functions
+└── README.md         # This file
+```
 
 Currently, two official plugins are available:
 

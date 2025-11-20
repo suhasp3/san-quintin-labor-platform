@@ -14,22 +14,19 @@ export default function DashboardPage() {
     description?: string;
   }) => {
     try {
-      // In a real app, you would POST to the API
-      const newJob: Job = {
-        id: Date.now(),
-        ...jobData,
-      };
+      const response = await fetch('http://localhost:8000/jobs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(jobData),
+      });
 
-      // For now, just show success message
+      if (!response.ok) {
+        throw new Error('Failed to post job');
+      }
+
+      const newJob: Job = await response.json();
       alert('Job posted successfully!');
       setSubmittedJobs([...submittedJobs, newJob]);
-
-      // Optionally, you could POST to the backend:
-      // await fetch('http://localhost:8000/jobs', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify(newJob),
-      // });
     } catch (error) {
       console.error('Error posting job:', error);
       alert('Error posting job. Please try again.');
