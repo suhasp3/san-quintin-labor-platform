@@ -1,5 +1,6 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
-import { AlertCircle, RefreshCw } from 'lucide-react';
+import { AlertCircle, RefreshCw, Home } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 
@@ -65,13 +66,13 @@ class ErrorBoundary extends Component<Props, State> {
                 <CardTitle className="text-destructive">Something went wrong</CardTitle>
               </div>
               <CardDescription>
-                An unexpected error occurred. Please try refreshing the page.
+                An unexpected error occurred. The page couldn't load properly.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               {process.env.NODE_ENV === 'development' && this.state.error && (
                 <div className="rounded-lg bg-muted p-3 text-sm">
-                  <p className="font-mono text-xs text-muted-foreground">
+                  <p className="font-mono text-xs text-muted-foreground break-all">
                     {this.state.error.toString()}
                   </p>
                   {this.state.errorInfo && (
@@ -79,17 +80,25 @@ class ErrorBoundary extends Component<Props, State> {
                       <summary className="cursor-pointer text-xs text-muted-foreground">
                         Stack trace
                       </summary>
-                      <pre className="mt-2 text-xs overflow-auto">
+                      <pre className="mt-2 text-xs overflow-auto max-h-40">
                         {this.state.errorInfo.componentStack}
                       </pre>
                     </details>
                   )}
                 </div>
               )}
-              <Button onClick={this.handleReset} className="w-full">
-                <RefreshCw className="mr-2 h-4 w-4" />
-                Refresh Page
-              </Button>
+              <div className="flex gap-2">
+                <Button onClick={this.handleReset} variant="outline" className="flex-1">
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  Refresh Page
+                </Button>
+                <Button asChild className="flex-1">
+                  <Link to="/jobs">
+                    <Home className="mr-2 h-4 w-4" />
+                    Go Home
+                  </Link>
+                </Button>
+              </div>
             </CardContent>
           </Card>
         </div>

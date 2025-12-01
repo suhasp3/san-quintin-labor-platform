@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { AudioLines, RefreshCw, ShieldCheck, Wifi } from "lucide-react";
 
 import type { Job, Contract } from "../types";
@@ -7,7 +7,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { getApiUrl } from "../lib/config";
 import { useAuth } from "../contexts/AuthContext";
 
 export default function JobsPage() {
@@ -16,27 +15,24 @@ export default function JobsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState("all");
-
-  useEffect(() => {
-    fetchJobs();
-  }, []);
+  const mountedRef = useRef(true);
 
   const fetchJobs = async () => {
     try {
       setLoading(true);
-      setError(null);
-      const response = await fetch(getApiUrl("jobs"));
+      const response = await fetch("http://localhost:8000/jobs");
       if (!response.ok) {
         throw new Error("Error loading jobs");
       }
       const data = await response.json();
-      setJobs(data || []);
+      if (mountedRef.current) {
+        setJobs(data);
+      }
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : "Could not load jobs. Please verify the server is running.";
-      setError(errorMessage);
-      console.error("Error fetching jobs:", err);
-      // Fallback to sample data only if we have no jobs
-      if (jobs.length === 0) {
+      if (mountedRef.current) {
+        setError("Could not load jobs. Please verify the server is running.");
+        console.error("Error fetching jobs:", err);
+        // Fallback to sample data
         setJobs([
           {
             id: 1,
@@ -55,82 +51,135 @@ export default function JobsPage() {
         ]);
       }
     } finally {
-      setLoading(false);
+      if (mountedRef.current) {
+        setLoading(false);
+      }
     }
   };
 
-  const handleApply = async (jobId: number, audioBlob?: Blob, notes?: string) => {
+  useEffect(() => {
+    mountedRef.current = true;
+    fetchJobs();
+    
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
+  const handleApply = async (jobId: number, audioBlob?: Blob) => {
     try {
-      // Get current user ID for the application
-      const workerId = user?.id || undefined;
-
-      let audioUrl: string | undefined = undefined;
-
-      // Upload audio file if provided
+      // In a real app, you would upload the audio blob to the server
       if (audioBlob) {
-        try {
-          const { uploadAudioFile } = await import("../lib/storage");
-          audioUrl = await uploadAudioFile(audioBlob, `job-${jobId}-application`);
-          console.log("Audio uploaded successfully:", audioUrl);
-        } catch (uploadError) {
-          console.error("Error uploading audio:", uploadError);
-          alert("Error uploading voice recording. Please try again or use Quick Apply.");
-          return;
-        }
+        console.log("Audio blob size:", audioBlob.size);
+        // You could upload it here: await uploadAudio(jobId, audioBlob);
       }
 
       // Create contract via API with authentication
-      const { authenticatedFetch } = await import("../lib/api");
-      const response = await authenticatedFetch(getApiUrl("contracts"), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          job_id: jobId,
-          worker_id: workerId,
-          audio_url: audioUrl,
-          notes: notes,
-        }),
-      });
+      try {
+        const { authenticatedFetch } = await import("../lib/api");
+        
+        // Include worker_id if user is logged in
+        const requestBody: any = { job_id: jobId };
+        if (user?.id) {
+          requestBody.worker_id = user.id;
+        }
+        
+        const response = await authenticatedFetch("http://localhost:8000/contracts", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(requestBody),
+        });
 
-      if (!response.ok) {
-        throw new Error("Failed to create contract");
+        if (!response.ok) {
+          let errorText = "Failed to create contract";
+          try {
+            const errorData = await response.json();
+            errorText = errorData.detail || errorData.message || errorText;
+          } catch {
+            try {
+              errorText = await response.text();
+            } catch {
+              // Use default error message
+            }
+          }
+          throw new Error(errorText);
+        }
+
+        const newContract: Contract = await response.json();
+
+        // Also save to localStorage as backup
+        try {
+          const existingContracts = localStorage.getItem("contracts");
+          const contracts: Contract[] = existingContracts
+            ? JSON.parse(existingContracts)
+            : [];
+          contracts.push(newContract);
+          localStorage.setItem("contracts", JSON.stringify(contracts));
+        } catch (storageErr) {
+          console.warn("Could not save to localStorage:", storageErr);
+        }
+
+        alert(
+          "Application submitted! The employer will review your application."
+        );
+      } catch (apiErr) {
+        console.error("Error applying to job:", apiErr);
+        const errorMessage = apiErr instanceof Error 
+          ? apiErr.message 
+          : "Error submitting application. Please try again.";
+        
+        // Provide more helpful error messages
+        if (errorMessage.includes("Network error") || errorMessage.includes("Failed to fetch")) {
+          alert("Could not connect to the server. Please make sure the backend is running at http://localhost:8000");
+        } else if (errorMessage.includes("worker")) {
+          alert("There was an issue with your account. Please try logging out and back in.");
+        } else {
+          alert(`Error: ${errorMessage}`);
+        }
       }
-
-      const newContract: Contract = await response.json();
-
-      // Also save to localStorage as backup
-      const existingContracts = localStorage.getItem("contracts");
-      const contracts: Contract[] = existingContracts
-        ? JSON.parse(existingContracts)
-        : [];
-      contracts.push(newContract);
-      localStorage.setItem("contracts", JSON.stringify(contracts));
-
-      alert(
-        "Application submitted! The employer will review your application."
-      );
     } catch (err) {
-      console.error("Error applying to job:", err);
-      alert("Error submitting application. Please try again.");
+      console.error("Unexpected error in handleApply:", err);
+      alert("An unexpected error occurred. Please try again.");
     }
   };
 
   const filteredJobs = useMemo(() => {
-    if (filter === "all") return jobs;
-    return jobs.filter((job) => {
-      const cropType = ((job as any)?.crop_type || "").toLowerCase();
-      return cropType === filter;
-    });
+    try {
+      if (filter === "all") return jobs;
+      return jobs.filter((job) => {
+        try {
+          const cropType = ((job as any)?.crop_type || "").toLowerCase();
+          return cropType === filter;
+        } catch (err) {
+          console.warn("Error filtering job:", err);
+          return false;
+        }
+      });
+    } catch (err) {
+      console.error("Error in filteredJobs:", err);
+      return jobs; // Return all jobs as fallback
+    }
   }, [jobs, filter]);
 
   const stats = useMemo(() => {
-    const workers = jobs.reduce(
-      (sum, job) => sum + (((job as any)?.workers_requested as number) || 0),
-      0
-    );
-    const audioFriendly = jobs.length;
-    const nextStart = jobs[0]?.date;
-    return { workers, audioFriendly, nextStart };
+    try {
+      const workers = jobs.reduce(
+        (sum, job) => {
+          try {
+            return sum + (((job as any)?.workers_requested as number) || 0);
+          } catch (err) {
+            return sum;
+          }
+        },
+        0
+      );
+      const audioFriendly = jobs.length;
+      const nextStart = jobs[0]?.date;
+      return { workers, audioFriendly, nextStart };
+    } catch (err) {
+      console.error("Error calculating stats:", err);
+      return { workers: 0, audioFriendly: 0, nextStart: undefined };
+    }
   }, [jobs]);
 
   return (
@@ -255,9 +304,14 @@ export default function JobsPage() {
           </Card>
         ) : (
           <div className="space-y-4">
-            {filteredJobs.map((job) => (
-              <JobCard key={job.id} job={job} onApply={handleApply} />
-            ))}
+            {filteredJobs.map((job) => {
+              try {
+                return <JobCard key={job.id} job={job} onApply={handleApply} />;
+              } catch (err) {
+                console.error("Error rendering job card:", err, job);
+                return null;
+              }
+            })}
           </div>
         )}
       </main>

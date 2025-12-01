@@ -32,21 +32,40 @@ export default function VoiceRecorder({ onRecordComplete, onCancel }: VoiceRecor
 
   const startRecording = async () => {
     try {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error('MediaDevices API not supported');
+      }
+
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const mediaRecorder = new MediaRecorder(stream);
       mediaRecorderRef.current = mediaRecorder;
       audioChunksRef.current = [];
 
       mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          audioChunksRef.current.push(event.data);
+        try {
+          if (event.data && event.data.size > 0) {
+            audioChunksRef.current.push(event.data);
+          }
+        } catch (err) {
+          console.error('Error handling audio data:', err);
         }
       };
 
       mediaRecorder.onstop = () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-        onRecordComplete(audioBlob);
-        stream.getTracks().forEach((track) => track.stop());
+        try {
+          const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+          onRecordComplete(audioBlob);
+          stream.getTracks().forEach((track) => track.stop());
+        } catch (err) {
+          console.error('Error stopping recording:', err);
+          alert('Error processing recording. Please try again.');
+        }
+      };
+
+      mediaRecorder.onerror = (event) => {
+        console.error('MediaRecorder error:', event);
+        setIsRecording(false);
+        alert('Recording error occurred. Please try again.');
       };
 
       mediaRecorder.start();
@@ -54,7 +73,9 @@ export default function VoiceRecorder({ onRecordComplete, onCancel }: VoiceRecor
       setRecordingTime(0);
     } catch (error) {
       console.error('Error accessing microphone:', error);
-      alert('Could not access microphone. Please allow access.');
+      setIsRecording(false);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      alert(`Could not access microphone: ${errorMessage}. Please allow access and try again.`);
     }
   };
 

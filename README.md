@@ -76,16 +76,6 @@ The frontend will be available at `http://localhost:5173`
 - **Poisson Process Modeling**: Realistic job arrival simulation for research
 - **Protected Routes**: Contracts, Dashboard, and Admin pages require authentication
 
-## Deployment
-
-Ready to deploy? See the comprehensive [**Deployment Guide**](./DEPLOYMENT.md) for step-by-step instructions.
-
-**Quick deploy options:**
-- Backend: Railway, Render, Fly.io, or Docker
-- Frontend: Vercel, Netlify, or GitHub Pages
-
-See [DEPLOY_CHECKLIST.md](./DEPLOY_CHECKLIST.md) for a quick checklist.
-
 ## API Endpoints
 
 See `backend/README.md` for detailed API documentation.

@@ -6,7 +6,6 @@ import {
   LineChart,
   LogOut,
   User,
-  ClipboardList,
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { Button } from "./ui/button";
@@ -22,8 +21,14 @@ export default function Navbar() {
   }
 
   const handleSignOut = async () => {
-    await signOut();
-    navigate("/login");
+    try {
+      await signOut();
+      navigate("/login");
+    } catch (error) {
+      console.error("Error signing out:", error);
+      // Still navigate to login even if signOut fails
+      navigate("/login");
+    }
   };
 
   // Define nav items with role requirements
@@ -31,7 +36,6 @@ export default function Navbar() {
     { path: "/jobs", icon: Briefcase, label: "Jobs", roles: ['worker', 'admin'] as const },
     { path: "/my-contracts", icon: FileText, label: "Contracts", roles: ['worker', 'admin'] as const },
     { path: "/dashboard", icon: LayoutDashboard, label: "Post Job", roles: ['grower', 'admin'] as const },
-    { path: "/applications", icon: ClipboardList, label: "Applications", roles: ['grower', 'admin'] as const },
     { path: "/admin", icon: LineChart, label: "Admin", roles: ['admin'] as const },
   ];
 
@@ -41,12 +45,12 @@ export default function Navbar() {
       if (!user || !userRole) return false;
       return item.roles.includes(userRole);
     } catch (error) {
-      console.error('Error filtering nav items:', error);
+      console.error("Error filtering nav items:", error);
       return false;
     }
   });
 
-  const totalItems = visibleNavItems.length + (user ? 1 : 0);
+  const totalItems = Math.max(1, visibleNavItems.length + (user ? 1 : 0));
 
   return (
     <nav className="fixed inset-x-0 bottom-4 z-50 px-4">

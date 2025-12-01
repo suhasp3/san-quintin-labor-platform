@@ -8,7 +8,25 @@ interface RoleProtectedRouteProps {
 }
 
 export default function RoleProtectedRoute({ children, allowedRoles }: RoleProtectedRouteProps) {
-  const { user, userRole, loading } = useAuth();
+  let authContext;
+  try {
+    authContext = useAuth();
+  } catch (error) {
+    console.error('Error getting auth context:', error);
+    // Return a safe fallback instead of crashing
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <div className="max-w-md text-center space-y-4">
+          <div className="text-red-600 text-lg font-semibold">⚠️ Authentication Error</div>
+          <p className="text-muted-foreground">
+            There was an issue loading your authentication. Please refresh the page.
+          </p>
+        </div>
+      </div>
+    );
+  }
+  
+  const { user, userRole, loading } = authContext;
   const location = useLocation();
 
   // If Supabase is not configured, allow access but show a warning

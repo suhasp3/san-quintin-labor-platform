@@ -4,23 +4,16 @@ from datetime import datetime, timedelta
 from typing import List, Optional
 from supabase import Client
 
-from models import Job, JobCreate, JobResponse, Contract, ContractCreate, ContractUpdate, StatsResponse, ApplicationResponse, ApplicationStatusUpdate
+from models import Job, JobCreate, JobResponse, Contract, ContractCreate, ContractUpdate, StatsResponse
 from db import supabase
 from data_generator import insert_jobs_to_supabase
 
 app = FastAPI(title="Mexico Labor Project API", version="1.0.0")
 
 # CORS middleware to allow frontend requests
-# Get allowed origins from environment variable, fallback to localhost for development
-import os
-allowed_origins = os.getenv(
-    "ALLOWED_ORIGINS",
-    "http://localhost:5173,http://localhost:3000"
-).split(",")
-
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=allowed_origins,
+    allow_origins=["http://localhost:5173", "http://localhost:3000"],  # Vite default port
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -255,13 +248,13 @@ async def create_contract(contract: ContractCreate):
     """Create a new contract (job application)."""
     worker_id = contract.worker_id
     
-    # If worker_id is provided, ensure worker record exists
+    # If worker_id is provided and not the default UUID, ensure worker record exists
     if worker_id and worker_id != '00000000-0000-0000-0000-000000000000':
         # Check if worker record exists
         worker_check = supabase.table("workers").select("user_id").eq("user_id", worker_id).execute()
         
         if not worker_check.data:
-            # Check if user exists
+            # Check if user exists and is a worker
             user_check = supabase.table("users").select("id, role").eq("id", worker_id).execute()
             
             if user_check.data:
@@ -277,33 +270,26 @@ async def create_contract(contract: ContractCreate):
                         # Worker might already exist (race condition), check again
                         worker_check = supabase.table("workers").select("user_id").eq("user_id", worker_id).execute()
                         if not worker_check.data:
-                            raise HTTPException(
-                                status_code=500, 
-                                detail=f"Failed to create worker record: {str(e)}"
-                            )
+                            # If still doesn't exist, don't include worker_id
+                            worker_id = None
                 else:
-                    # User is not a worker, cannot create application
-                    raise HTTPException(
-                        status_code=400,
-                        detail="Only workers can apply to jobs"
-                    )
+                    # User is not a worker, don't include worker_id
+                    worker_id = None
             else:
-                # User doesn't exist
-                raise HTTPException(
-                    status_code=404,
-                    detail="User not found"
-                )
+                # User doesn't exist, don't include worker_id
+                worker_id = None
+    else:
+        # Invalid or default UUID, don't include worker_id
+        worker_id = None
     
     # First, create an application
     application_data = {
         'job_id': contract.job_id,
         'status': 'pending',
-        'audio_url': contract.audio_url,  # Voice recording URL if provided
-        'notes': contract.notes,  # Text application notes if provided
     }
     
     # Only add worker_id if it's valid
-    if worker_id and worker_id != '00000000-0000-0000-0000-000000000000':
+    if worker_id:
         application_data['worker_id'] = worker_id
     
     app_response = supabase.table("applications").insert(application_data).execute()
@@ -329,7 +315,7 @@ async def create_contract(contract: ContractCreate):
     }
     
     # Only add worker_id if it's valid
-    if worker_id and worker_id != '00000000-0000-0000-0000-000000000000':
+    if worker_id:
         contract_data['worker_id'] = worker_id
     
     contract_response = supabase.table("contracts").insert(contract_data).execute()
@@ -502,115 +488,3 @@ async def regenerate_jobs(num_jobs: int = 50, arrival_rate_minutes: float = 30.0
         }
     else:
         raise HTTPException(status_code=500, detail=result['error'])
-
-
-@app.get("/applications", response_model=List[ApplicationResponse])
-async def get_applications(
-    grower_id: Optional[str] = None,
-    job_id: Optional[int] = None,
-    status: Optional[str] = None
-):
-    """
-    Get applications for growers/admin.
-    - If grower_id is provided, returns applications for that grower's jobs
-    - If job_id is provided, returns applications for that specific job
-    - Admins can see all applications
-    """
-    # Start with base query
-    query = supabase.table("applications").select("*")
-    
-    if job_id:
-        query = query.eq("job_id", job_id)
-    
-    if grower_id:
-        # Filter by grower's jobs
-        # First get all job IDs for this grower
-        jobs_response = supabase.table("jobs").select("id").eq("grower_id", grower_id).execute()
-        job_ids = [job['id'] for job in jobs_response.data] if jobs_response.data else []
-        
-        if not job_ids:
-            return []  # No jobs for this grower
-        
-        query = query.in_("job_id", job_ids)
-    
-    if status:
-        query = query.eq("status", status)
-    
-    # Order by submitted_at descending (newest first)
-    query = query.order("submitted_at", desc=True)
-    
-    response = query.execute()
-    
-    applications = []
-    for app in response.data:
-        # Get job details
-        job_response = supabase.table("jobs").select("*, growers(*)").eq("id", app['job_id']).execute()
-        job = job_response.data[0] if job_response.data else {}
-        grower = job.get('growers', {}) if isinstance(job.get('growers'), dict) else {}
-        
-        # Get worker/user details
-        worker_name = "Unknown Worker"
-        worker_phone = "N/A"
-        if app.get('worker_id'):
-            try:
-                worker_response = supabase.table("workers").select("*, users(*)").eq("user_id", app['worker_id']).execute()
-                if worker_response.data:
-                    worker = worker_response.data[0]
-                    user = worker.get('users', {}) if isinstance(worker.get('users'), dict) else {}
-                    worker_name = user.get('name', 'Unknown Worker')
-                    worker_phone = user.get('phone', 'N/A')
-            except:
-                # If worker/user lookup fails, try direct user lookup
-                try:
-                    user_response = supabase.table("users").select("*").eq("id", app['worker_id']).execute()
-                    if user_response.data:
-                        user = user_response.data[0]
-                        worker_name = user.get('name', 'Unknown Worker')
-                        worker_phone = user.get('phone', 'N/A')
-                except:
-                    pass
-        
-        applications.append({
-            'id': app['id'],
-            'job_id': app['job_id'],
-            'job_title': job.get('title', 'Unknown Job'),
-            'worker_id': app.get('worker_id'),
-            'worker_name': worker_name,
-            'worker_phone': worker_phone,
-            'status': app.get('status', 'pending'),
-            'audio_url': app.get('audio_url'),
-            'notes': app.get('notes'),
-            'submitted_at': app.get('submitted_at', ''),
-            'grower_id': grower.get('user_id') if grower else job.get('grower_id'),
-            'farm_name': grower.get('farm_name', 'Unknown Farm') if grower else None,
-        })
-    
-    return applications
-
-
-@app.patch("/applications/{application_id}")
-async def update_application_status(
-    application_id: int,
-    update: ApplicationStatusUpdate
-):
-    """Update application status (accept/reject)."""
-    status = update.status
-    if status not in ['pending', 'accepted', 'rejected']:
-        raise HTTPException(status_code=400, detail="Invalid status")
-    
-    response = supabase.table("applications").update({
-        'status': status
-    }).eq("id", application_id).execute()
-    
-    if not response.data:
-        raise HTTPException(status_code=404, detail="Application not found")
-    
-    # Also update the associated contract if it exists
-    contract_response = supabase.table("contracts").select("*").eq("application_id", application_id).execute()
-    if contract_response.data:
-        contract_status = 'accepted' if status == 'accepted' else 'pending'
-        supabase.table("contracts").update({
-            'status': contract_status
-        }).eq("application_id", application_id).execute()
-    
-    return {"message": "Application status updated", "application_id": application_id, "status": status}

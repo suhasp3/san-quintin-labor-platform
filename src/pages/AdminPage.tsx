@@ -19,7 +19,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { getApiUrl } from "../lib/config";
 
 interface Stats {
   active_jobs: number;
@@ -35,22 +34,35 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchStats();
-  }, []);
-
-  const fetchStats = async () => {
-    try {
-      const response = await fetch(getApiUrl("stats"));
-      if (response.ok) {
-        const data = await response.json();
-        setStats(data);
+    let mounted = true;
+    
+    const fetchStats = async () => {
+      try {
+        const response = await fetch("http://localhost:8000/stats");
+        if (response.ok) {
+          const data = await response.json();
+          if (data && mounted) {
+            setStats(data);
+          }
+        } else {
+          console.warn("Stats API returned non-OK status:", response.status);
+        }
+      } catch (error) {
+        console.error("Error fetching stats:", error);
+        // Keep fallback data (already set in component)
+      } finally {
+        if (mounted) {
+          setLoading(false);
+        }
       }
-    } catch (error) {
-      console.error("Error fetching stats:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
+    
+    fetchStats();
+    
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   // Fallback data if API fails
   const jobStats =

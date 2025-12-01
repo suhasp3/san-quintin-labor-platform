@@ -10,49 +10,71 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { getApiUrl } from "../lib/config";
 
 export default function MyContractsPage() {
   const [contracts, setContracts] = useState<Contract[]>([]);
 
   useEffect(() => {
-    fetchContracts();
-  }, []);
-
-  const fetchContracts = async () => {
+    let mounted = true;
+    
+    const fetchContracts = async () => {
     try {
       const { authenticatedFetch } = await import("../lib/api");
-      const response = await authenticatedFetch(getApiUrl("contracts"));
+      const response = await authenticatedFetch("http://localhost:8000/contracts");
       if (response.ok) {
         const data = await response.json();
-        const normalized = data.map((contract: any) => ({
-          id: contract.id,
-          jobId: contract.job_id ?? contract.jobId,
-          jobTitle: contract.job_title ?? contract.jobTitle ?? "Unknown job",
-          pay: contract.pay ?? contract.jobs?.pay ?? "$—",
-          location: contract.location ?? contract.jobs?.location ?? "TBD",
-          date: contract.date ?? contract.jobs?.start_date ?? "",
-          status: contract.status ?? "pending",
-          workerId: contract.worker_id,
-          createdAt: contract.created_at,
-        }));
-        setContracts(normalized);
+        const normalized = (data || []).map((contract: any) => {
+          try {
+            return {
+              id: contract.id,
+              jobId: contract.job_id ?? contract.jobId,
+              jobTitle: contract.job_title ?? contract.jobTitle ?? "Unknown job",
+              pay: contract.pay ?? contract.jobs?.pay ?? "$—",
+              location: contract.location ?? contract.jobs?.location ?? "TBD",
+              date: contract.date ?? contract.jobs?.start_date ?? "",
+              status: contract.status ?? "pending",
+              workerId: contract.worker_id,
+              createdAt: contract.created_at,
+            };
+          } catch (err) {
+            console.warn("Error normalizing contract:", err);
+            return null;
+          }
+        }).filter((c: any) => c !== null);
+        if (mounted) {
+          setContracts(normalized);
+        }
       } else {
         // Fallback to localStorage if API fails
-        const savedContracts = localStorage.getItem("contracts");
-        if (savedContracts) {
-          setContracts(JSON.parse(savedContracts));
+        try {
+          const savedContracts = localStorage.getItem("contracts");
+          if (savedContracts && mounted) {
+            setContracts(JSON.parse(savedContracts));
+          }
+        } catch (storageErr) {
+          console.error("Error reading from localStorage:", storageErr);
         }
       }
     } catch (error) {
       console.error("Error fetching contracts:", error);
       // Fallback to localStorage
-      const savedContracts = localStorage.getItem("contracts");
-      if (savedContracts) {
-        setContracts(JSON.parse(savedContracts));
+      try {
+        const savedContracts = localStorage.getItem("contracts");
+        if (savedContracts && mounted) {
+          setContracts(JSON.parse(savedContracts));
+        }
+      } catch (storageErr) {
+        console.error("Error reading from localStorage:", storageErr);
       }
     }
-  };
+    };
+    
+    fetchContracts();
+    
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const getStatusColor = (status: Contract["status"]) => {
     switch (status) {

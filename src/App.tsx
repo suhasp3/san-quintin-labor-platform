@@ -7,7 +7,6 @@ import JobsPage from "./pages/JobsPage";
 import MyContractsPage from "./pages/MyContractsPage";
 import DashboardPage from "./pages/DashboardPage";
 import AdminPage from "./pages/AdminPage";
-import ApplicationsPage from "./pages/ApplicationsPage";
 import LoginPage from "./pages/LoginPage";
 import SignUpPage from "./pages/SignUpPage";
 
@@ -15,9 +14,11 @@ function App() {
   return (
     <ErrorBoundary>
       <AuthProvider>
-        <Router>
-          <div className="min-h-screen bg-background text-foreground">
-            <Routes>
+        <ErrorBoundary>
+          <Router>
+            <div className="min-h-screen bg-background text-foreground">
+              <ErrorBoundary>
+                <Routes>
             <Route path="/login" element={<LoginPage />} />
             <Route path="/signup" element={<SignUpPage />} />
             {/* Jobs page - accessible to workers and admins */}
@@ -55,15 +56,6 @@ function App() {
                 </RoleProtectedRoute>
               }
             />
-            {/* Applications page - accessible to growers and admins */}
-            <Route
-              path="/applications"
-              element={
-                <RoleProtectedRoute allowedRoles={['grower', 'admin']}>
-                  <ApplicationsPage />
-                </RoleProtectedRoute>
-              }
-            />
             {/* Admin page - only accessible to admins */}
             <Route
               path="/admin"
@@ -72,11 +64,15 @@ function App() {
                   <AdminPage />
                 </RoleProtectedRoute>
               }
-            />
-            </Routes>
-            <Navbar />
-          </div>
-        </Router>
+                />
+                </Routes>
+              </ErrorBoundary>
+              <ErrorBoundary>
+                <Navbar />
+              </ErrorBoundary>
+            </div>
+          </Router>
+        </ErrorBoundary>
       </AuthProvider>
     </ErrorBoundary>
   );

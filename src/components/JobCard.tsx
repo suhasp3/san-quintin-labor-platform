@@ -1,10 +1,9 @@
 import { useState } from "react";
-import { CalendarDays, MapPin, Users, Waves, FileText } from "lucide-react";
+import { CalendarDays, MapPin, Users, Waves } from "lucide-react";
 
 import type { Job } from "../types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Card,
   CardContent,
@@ -17,27 +16,17 @@ import VoiceRecorder from "./VoiceRecorder";
 
 interface JobCardProps {
   job: Job;
-  onApply: (jobId: number, audioBlob?: Blob, notes?: string) => void;
+  onApply: (jobId: number, audioBlob?: Blob) => void;
 }
 
 export default function JobCard({ job, onApply }: JobCardProps) {
   const [showRecorder, setShowRecorder] = useState(false);
-  const [showTextForm, setShowTextForm] = useState(false);
-  const [textNotes, setTextNotes] = useState("");
   const cropType = (job as any)?.crop_type || (job as any)?.cropType;
   const workerCount = (job as any)?.workers_requested || (job as any)?.workersRequested;
 
-  const handleApply = (audioBlob?: Blob, notes?: string) => {
-    onApply(job.id, audioBlob, notes);
+  const handleApply = (audioBlob?: Blob) => {
+    onApply(job.id, audioBlob);
     setShowRecorder(false);
-    setShowTextForm(false);
-    setTextNotes("");
-  };
-
-  const handleTextSubmit = () => {
-    if (textNotes.trim()) {
-      handleApply(undefined, textNotes.trim());
-    }
   };
 
   return (
@@ -83,37 +72,9 @@ export default function JobCard({ job, onApply }: JobCardProps) {
       <CardFooter className="flex flex-col gap-3">
         {showRecorder ? (
           <VoiceRecorder
-            onRecordComplete={(blob) => handleApply(blob)}
+            onRecordComplete={handleApply}
             onCancel={() => setShowRecorder(false)}
           />
-        ) : showTextForm ? (
-          <div className="w-full space-y-3">
-            <Textarea
-              placeholder="Write your application message here..."
-              value={textNotes}
-              onChange={(e) => setTextNotes(e.target.value)}
-              rows={4}
-              className="w-full"
-            />
-            <div className="flex gap-2">
-              <Button
-                className="flex-1"
-                onClick={handleTextSubmit}
-                disabled={!textNotes.trim()}
-              >
-                Submit Application
-              </Button>
-              <Button
-                variant="secondary"
-                onClick={() => {
-                  setShowTextForm(false);
-                  setTextNotes("");
-                }}
-              >
-                Cancel
-              </Button>
-            </div>
-          </div>
         ) : (
           <>
             <Button
@@ -125,14 +86,6 @@ export default function JobCard({ job, onApply }: JobCardProps) {
             </Button>
             <Button
               variant="secondary"
-              className="w-full"
-              onClick={() => setShowTextForm(true)}
-            >
-              <FileText className="mr-2 h-4 w-4" />
-              Apply with Text
-            </Button>
-            <Button
-              variant="outline"
               className="w-full"
               onClick={() => onApply(job.id)}
             >
