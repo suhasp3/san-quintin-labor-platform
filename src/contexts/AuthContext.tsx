@@ -133,7 +133,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             }
           }
         } else {
-          setUserRole(null);
+          if (mounted) {
+            setUserRole(null);
+          }
         }
         
         if (mounted) {
