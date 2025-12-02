@@ -1,5 +1,5 @@
-import { useState, useEffect, useMemo, useRef } from "react";
-import { AudioLines, RefreshCw, ShieldCheck, Wifi } from "lucide-react";
+import { useState, useEffect, useMemo } from "react";
+import { AudioLines, RefreshCw } from "lucide-react";
 
 import type { Job, Contract } from "../types";
 import JobCard from "../components/JobCard";

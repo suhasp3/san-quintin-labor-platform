@@ -34,11 +34,10 @@ export default function Navbar() {
 
   // Define nav items with role requirements
   const allNavItems = [
-    { path: "/jobs", icon: Briefcase, label: "Jobs", roles: ['worker', 'admin'] as const },
-    { path: "/my-contracts", icon: FileText, label: "Contracts", roles: ['worker', 'admin'] as const },
-    { path: "/dashboard", icon: LayoutDashboard, label: "Post Job", roles: ['grower', 'admin'] as const },
-    { path: "/applications", icon: ClipboardList, label: "Applications", roles: ['grower', 'admin'] as const },
-    { path: "/admin", icon: LineChart, label: "Admin", roles: ['admin'] as const },
+    { path: "/jobs", icon: Briefcase, label: "Jobs", roles: ['worker', 'admin'] as string[] },
+    { path: "/my-contracts", icon: FileText, label: "Contracts", roles: ['worker', 'admin'] as string[] },
+    { path: "/dashboard", icon: LayoutDashboard, label: "Post Job", roles: ['grower', 'admin'] as string[] },
+    { path: "/admin", icon: LineChart, label: "Admin", roles: ['admin'] as string[] },
   ];
 
   // Filter nav items based on user role
