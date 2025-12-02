@@ -18,7 +18,7 @@ export type Contract = {
   pay: string;
   location: string;
   date: string;
-  status: 'pending' | 'signed' | 'completed';
+  status: 'pending' | 'signed' | 'completed' | 'rejected';
   workerId?: string;
   createdAt?: string;
   contractPdfUrl?: string;

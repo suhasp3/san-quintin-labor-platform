@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { FileCheck2, MapPin, Wallet, Download, FileText } from "lucide-react";
+import { FileCheck2, MapPin, Wallet, Download } from "lucide-react";
 
 import type { Contract } from "../types";
 import { Badge } from "@/components/ui/badge";
