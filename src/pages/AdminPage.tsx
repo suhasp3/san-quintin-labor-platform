@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { API_URL } from "../lib/apiConfig";
 
 interface Stats {
   active_jobs: number;
@@ -59,7 +60,7 @@ export default function AdminPage() {
     
     const fetchStats = async () => {
       try {
-        const response = await fetch("http://localhost:8000/stats");
+        const response = await fetch(`${API_URL}/stats`);
         if (response.ok) {
           const data = await response.json();
           if (data && mounted) {
@@ -91,7 +92,7 @@ export default function AdminPage() {
     const fetchApplications = async () => {
       try {
         setApplicationsLoading(true);
-        let url = "http://localhost:8000/applications";
+        let url = `${API_URL}/applications`;
         if (filterStatus !== "all") {
           url += `?status=${filterStatus}`;
         }

@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "../contexts/AuthContext";
+import { API_URL } from "../lib/apiConfig";
 
 export default function JobsPage() {
   let authContext;
@@ -37,7 +38,7 @@ export default function JobsPage() {
   const fetchJobs = async () => {
     try {
       setLoading(true);
-      const response = await fetch("http://localhost:8000/jobs");
+      const response = await fetch(`${API_URL}/jobs`);
       if (!response.ok) {
         throw new Error("Error loading jobs");
       }
@@ -127,7 +128,7 @@ export default function JobsPage() {
           requestBody.audio_url = audioUrl;
         }
         
-        const response = await authenticatedFetch("http://localhost:8000/contracts", {
+        const response = await authenticatedFetch(`${API_URL}/contracts`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(requestBody),
@@ -173,7 +174,7 @@ export default function JobsPage() {
         
         // Provide more helpful error messages
         if (errorMessage.includes("Network error") || errorMessage.includes("Failed to fetch")) {
-          alert("Could not connect to the server. Please make sure the backend is running at http://localhost:8000");
+          alert(`Could not connect to the server. Please make sure the backend is running at ${API_URL}`);
         } else if (errorMessage.includes("worker")) {
           alert("There was an issue with your account. Please try logging out and back in.");
         } else {

@@ -6,6 +6,7 @@ import type { Job } from "../types";
 import { formatDate } from "../utils/dateFormatter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { API_URL } from "../lib/apiConfig";
 
 export default function DashboardPage() {
   const [submittedJobs, setSubmittedJobs] = useState<Job[]>([]);
@@ -19,7 +20,7 @@ export default function DashboardPage() {
   }) => {
     try {
       const { authenticatedFetch } = await import("../lib/api");
-      const response = await authenticatedFetch("http://localhost:8000/jobs", {
+      const response = await authenticatedFetch(`${API_URL}/jobs`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(jobData),

@@ -7,6 +7,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { authenticatedFetch } from "../lib/api";
+import { API_URL } from "../lib/apiConfig";
 
 interface Application {
   id: number;
@@ -63,7 +64,7 @@ export default function ApplicationsPage() {
     try {
       setLoading(true);
       setError(null);
-      let url = "http://localhost:8000/applications";
+      let url = `${API_URL}/applications`;
       if (userRole === 'grower' && user?.id) {
         url += `?grower_id=${user.id}`;
       }
@@ -94,7 +95,7 @@ export default function ApplicationsPage() {
   const handleStatusUpdate = async (applicationId: number, newStatus: 'accepted' | 'rejected') => {
     try {
       const response = await authenticatedFetch(
-        `http://localhost:8000/applications/${applicationId}`,
+        `${API_URL}/applications/${applicationId}`,
         {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },

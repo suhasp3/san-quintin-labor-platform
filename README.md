@@ -51,13 +51,15 @@ npm install
 
 2. Set up environment variables:
    - Create a `.env` file in the root directory (same level as `package.json`)
-   - Add your Supabase credentials:
+   - Add your Supabase credentials and API URL:
 ```env
 VITE_SUPABASE_URL=https://your-project-ref.supabase.co
 VITE_SUPABASE_ANON_KEY=your-anon-key-here
+VITE_API_URL=http://localhost:8000
 ```
-   - **Note**: These are the same values from `backend/.env` but with `VITE_` prefix so Vite can expose them to the frontend
-   - You can copy the values from `backend/.env` and add the `VITE_` prefix
+   - **Note**: 
+     - Supabase values are the same from `backend/.env` but with `VITE_` prefix so Vite can expose them to the frontend
+     - `VITE_API_URL` is the backend API URL. Use `http://localhost:8000` for local development, or your production URL (e.g., `https://san-quintin-labor-platform-production.up.railway.app`) for production
 
 3. Run the development server:
 ```bash
