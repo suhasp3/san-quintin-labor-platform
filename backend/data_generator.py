@@ -86,6 +86,7 @@ def convert_to_supabase_format(df: pd.DataFrame, base_date: datetime = None, gro
         List of job dictionaries ready for Supabase insertion
     """
     if base_date is None:
+        # Use current date/time as base for all jobs
         base_date = datetime.now()
     
     jobs = []
@@ -107,11 +108,13 @@ def convert_to_supabase_format(df: pd.DataFrame, base_date: datetime = None, gro
         farm_idx = int(row['Job_ID']) % len(farm_names)
         location = farm_names[farm_idx]
         
-        # Create description
+        # Create description with explicit currency
+        pay_rate = float(row['Pay_Rate_MXN'])
         description = (
             f"{crop} harvesting job. "
             f"Quantity: {int(row['Quantity_Units'])} {row['Unit_Type']}. "
             f"Workers needed: {int(row['Workers_Requested'])}. "
+            f"Pay rate: {pay_rate:.2f} MXN (Mexican Pesos) per {row['Unit_Type']}. "
             f"Estimated duration: {int(row['Service_Time_Mins'])} minutes."
         )
         
@@ -135,7 +138,7 @@ def convert_to_supabase_format(df: pd.DataFrame, base_date: datetime = None, gro
     return jobs
 
 
-def insert_jobs_to_supabase(num_jobs: int = 50, arrival_rate_minutes: float = 30.0, grower_id: Optional[str] = None) -> Dict[str, Any]:
+def insert_jobs_to_supabase(num_jobs: int = 25, arrival_rate_minutes: float = 30.0, grower_id: Optional[str] = None) -> Dict[str, Any]:
     """
     Generate jobs using Poisson process and insert them into Supabase.
     

@@ -159,7 +159,7 @@ export default function MyContractsPage() {
               <FileCheck2 className="mx-auto mb-4 h-10 w-10 text-primary" />
               <CardTitle className="text-lg">No contracts yet</CardTitle>
               <CardDescription className="mt-2 text-sm">
-                Apply to jobs from the home tab. Your signed contracts will land here automatically.
+                Apply to jobs from the home tab. Your applications and contracts will appear here.
               </CardDescription>
             </CardContent>
           </Card>
@@ -185,6 +185,15 @@ export default function MyContractsPage() {
                     <MapPin className="h-4 w-4 text-primary" />
                     <span>{contract.location}</span>
                   </div>
+                  
+                  {/* Show message for pending contracts */}
+                  {contract.status === 'pending' && (
+                    <div className="mt-4 pt-3 border-t border-border/50">
+                      <p className="text-xs text-muted-foreground text-center">
+                        Your application is pending review by the employer.
+                      </p>
+                    </div>
+                  )}
                   
                   {/* Show download button for signed contracts (accepted jobs) */}
                   {(contract.status === 'signed' || contract.status === 'completed') && (

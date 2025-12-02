@@ -30,10 +30,31 @@ export default function JobsPage() {
   
   const { user } = authContext;
   const [jobs, setJobs] = useState<Job[]>([]);
+  const [appliedJobIds, setAppliedJobIds] = useState<Set<number>>(new Set());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState("all");
   const mountedRef = useRef(true);
+
+  const fetchAppliedJobs = async () => {
+    if (!user?.id) {
+      return;
+    }
+    
+    try {
+      const { authenticatedFetch } = await import("../lib/api");
+      const response = await authenticatedFetch(`${API_URL}/applications/my-applications?worker_id=${user.id}`);
+      if (response.ok) {
+        const data = await response.json();
+        if (mountedRef.current && data.job_ids) {
+          setAppliedJobIds(new Set(data.job_ids));
+        }
+      }
+    } catch (err) {
+      console.error("Error fetching applied jobs:", err);
+      // Continue without applied jobs data
+    }
+  };
 
   const fetchJobs = async () => {
     try {
@@ -78,11 +99,12 @@ export default function JobsPage() {
   useEffect(() => {
     mountedRef.current = true;
     fetchJobs();
+    fetchAppliedJobs();
     
     return () => {
       mountedRef.current = false;
     };
-  }, []);
+  }, [user]);
 
   const handleApply = async (jobId: number, audioBlob?: Blob) => {
     try {
@@ -166,6 +188,9 @@ export default function JobsPage() {
         alert(
           "Application submitted! The employer will review your application."
         );
+        
+        // Refresh applied jobs list
+        fetchAppliedJobs();
       } catch (apiErr) {
         console.error("Error applying to job:", apiErr);
         const errorMessage = apiErr instanceof Error 
@@ -350,7 +375,8 @@ export default function JobsPage() {
           <div className="space-y-4">
             {filteredJobs.map((job) => {
               try {
-                return <JobCard key={job.id} job={job} onApply={handleApply} />;
+                const hasApplied = appliedJobIds.has(job.id);
+                return <JobCard key={job.id} job={job} onApply={handleApply} hasApplied={hasApplied} />;
               } catch (err) {
                 console.error("Error rendering job card:", err, job);
                 return null;

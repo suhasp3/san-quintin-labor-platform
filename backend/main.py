@@ -91,8 +91,8 @@ async def get_jobs(
     # Convert to frontend format
     jobs = []
     for job in response.data:
-        # Format pay for display
-        pay_str = f"${float(job['pay_rate_mxn']):.2f}/{job['unit_type'].lower()}"
+        # Format pay for display with MXN currency
+        pay_str = f"${float(job['pay_rate_mxn']):.2f} MXN/{job['unit_type'].lower()}"
         
         jobs.append({
             'id': job['id'],
@@ -121,7 +121,7 @@ async def get_job(job_id: int):
         raise HTTPException(status_code=404, detail="Job not found")
     
     job = response.data[0]
-    pay_str = f"${float(job['pay_rate_mxn']):.2f}/{job['unit_type'].lower()}"
+    pay_str = f"${float(job['pay_rate_mxn']):.2f} MXN/{job['unit_type'].lower()}"
     
     return {
         'id': job['id'],
@@ -222,7 +222,7 @@ async def get_contracts(
     Get contracts. 
     - If worker_id is provided, filter by that worker
     - If authorization token is provided, automatically filter by that worker
-    - Only returns contracts with status 'accepted' or 'signed' by default
+    - Returns all contracts (pending, signed, completed) by default
     """
     # Try to get worker_id from token if not provided
     if not worker_id and authorization:
@@ -234,12 +234,10 @@ async def get_contracts(
     if worker_id:
         query = query.eq("worker_id", worker_id)
     
-    # Default to showing only signed/completed contracts (accepted jobs)
+    # If status filter is provided, use it; otherwise show all contracts (pending, signed, completed)
     if status:
         query = query.eq("status", status)
-    else:
-        # If no status filter, show signed and completed contracts (accepted jobs)
-        query = query.in_("status", ["signed", "completed"])
+    # No else clause - if no status filter, show all contracts
     
     # Order by created_at descending (newest first)
     query = query.order("created_at", desc=True)
@@ -253,7 +251,7 @@ async def get_contracts(
             'id': contract['id'],
             'job_id': contract['job_id'],
             'job_title': job.get('title', 'Unknown Job'),
-            'pay': f"${float(job.get('pay_rate_mxn', 0)):.2f}/{job.get('unit_type', 'unit')}",
+            'pay': f"${float(job.get('pay_rate_mxn', 0)):.2f} MXN/{job.get('unit_type', 'unit')}",
             'location': 'San Quintín',
             'date': job.get('start_date', ''),
             'status': contract['status'],
@@ -495,6 +493,40 @@ async def update_contract(contract_id: int, update: ContractUpdate):
         'worker_id': contract['worker_id'],
         'created_at': contract.get('created_at', ''),
     }
+
+
+@app.get("/applications/my-applications")
+async def get_my_applications(
+    worker_id: Optional[str] = None,
+    authorization: Optional[str] = Header(None)
+):
+    """
+    Get all applications for a specific worker.
+    Returns a list of job IDs the worker has applied to.
+    If worker_id is not provided, extracts it from the authorization token.
+    """
+    # Try to get worker_id from token if not provided
+    if not worker_id and authorization:
+        worker_id = get_user_id_from_token(authorization)
+    
+    if not worker_id:
+        return {"job_ids": [], "count": 0}
+    
+    # Verify worker_id matches the authenticated user (if token provided)
+    if authorization:
+        token_worker_id = get_user_id_from_token(authorization)
+        if token_worker_id and token_worker_id != worker_id:
+            raise HTTPException(status_code=403, detail="You can only view your own applications")
+    
+    # Get all applications for this worker
+    try:
+        response = supabase.table("applications").select("job_id").eq("worker_id", worker_id).execute()
+        # Return list of job IDs
+        job_ids = [app['job_id'] for app in response.data] if response.data else []
+        return {"job_ids": job_ids, "count": len(job_ids)}
+    except Exception as e:
+        print(f"Error fetching applications: {e}")
+        return {"job_ids": [], "count": 0}
 
 
 @app.get("/applications", response_model=List[ApplicationResponse])
@@ -847,20 +879,29 @@ async def get_stats():
 
 
 @app.post("/jobs/regenerate")
-async def regenerate_jobs(num_jobs: int = 50, arrival_rate_minutes: float = 30.0):
+async def regenerate_jobs(num_jobs: int = 25, arrival_rate_minutes: float = 30.0):
     """
-    Regenerate jobs using the Poisson process and insert into Supabase.
-    Useful for testing and refreshing data.
+    Delete all existing jobs and regenerate new ones with current dates.
+    Jobs will have pay rates specified in MXN (Mexican Pesos).
     """
-    result = insert_jobs_to_supabase(
-        num_jobs=num_jobs,
-        arrival_rate_minutes=arrival_rate_minutes
-    )
-    
-    if result['success']:
-        return {
-            "message": result['message'],
-            "jobs_inserted": result['jobs_inserted']
-        }
-    else:
-        raise HTTPException(status_code=500, detail=result['error'])
+    try:
+        # Delete all existing jobs first
+        delete_response = supabase.table("jobs").delete().neq("id", 0).execute()
+        deleted_count = len(delete_response.data) if delete_response.data else 0
+        
+        # Generate and insert new jobs with current dates
+        result = insert_jobs_to_supabase(
+            num_jobs=num_jobs,
+            arrival_rate_minutes=arrival_rate_minutes
+        )
+        
+        if result['success']:
+            return {
+                "message": f"Deleted {deleted_count} old jobs. {result['message']}",
+                "jobs_deleted": deleted_count,
+                "jobs_inserted": result['jobs_inserted']
+            }
+        else:
+            raise HTTPException(status_code=500, detail=result['error'])
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error regenerating jobs: {str(e)}")
