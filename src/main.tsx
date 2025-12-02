@@ -6,13 +6,14 @@ import App from './App.tsx'
 // Global error handlers to prevent white screens
 window.addEventListener('error', (event) => {
   console.error('Global error:', event.error);
-  // Prevent default error handling that might cause white screen
-  event.preventDefault();
+  // Don't prevent default - let ErrorBoundary handle it
+  // But log it for debugging
 });
 
 window.addEventListener('unhandledrejection', (event) => {
   console.error('Unhandled promise rejection:', event.reason);
-  // Prevent default error handling
+  // Log but don't prevent - let the app handle it
+  // This prevents the browser from showing error dialogs
   event.preventDefault();
 });
 

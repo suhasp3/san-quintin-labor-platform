@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 from typing import List, Optional
 from supabase import Client
 
-from models import Job, JobCreate, JobResponse, Contract, ContractCreate, ContractUpdate, StatsResponse
+from models import Job, JobCreate, JobResponse, Contract, ContractCreate, ContractUpdate, StatsResponse, ApplicationResponse, ApplicationStatusUpdate
 from db import supabase
 from data_generator import insert_jobs_to_supabase
 
@@ -292,6 +292,14 @@ async def create_contract(contract: ContractCreate):
     if worker_id:
         application_data['worker_id'] = worker_id
     
+    # Add audio_url if provided
+    if contract.audio_url:
+        application_data['audio_url'] = contract.audio_url
+    
+    # Add notes if provided
+    if contract.notes:
+        application_data['notes'] = contract.notes
+    
     app_response = supabase.table("applications").insert(application_data).execute()
     
     if not app_response.data:
@@ -370,6 +378,118 @@ async def update_contract(contract_id: int, update: ContractUpdate):
         'worker_id': contract['worker_id'],
         'created_at': contract.get('created_at', ''),
     }
+
+
+@app.get("/applications", response_model=List[ApplicationResponse])
+async def get_applications(
+    grower_id: Optional[str] = None,
+    job_id: Optional[int] = None,
+    status: Optional[str] = None
+):
+    """
+    Get all applications with job and worker details.
+    For admins: returns all applications
+    For growers: can filter by grower_id
+    """
+    # First get applications
+    query = supabase.table("applications").select("*")
+    
+    if job_id:
+        query = query.eq("job_id", job_id)
+    
+    if status:
+        query = query.eq("status", status)
+    
+    # Order by submitted_at descending (newest first)
+    query = query.order("submitted_at", desc=True)
+    
+    response = query.execute()
+    
+    # If filtering by grower_id, we need to filter after getting jobs
+    if grower_id:
+        # Get all jobs for this grower first
+        jobs_response = supabase.table("jobs").select("id").eq("grower_id", grower_id).execute()
+        grower_job_ids = [job['id'] for job in jobs_response.data]
+        # Filter applications to only those jobs
+        response.data = [app for app in response.data if app['job_id'] in grower_job_ids]
+    
+    applications = []
+    for app in response.data:
+        # Get job details
+        try:
+            job_response = supabase.table("jobs").select("*, growers(*)").eq("id", app['job_id']).execute()
+            job = job_response.data[0] if job_response.data else {}
+            grower = job.get('growers', {}) if isinstance(job.get('growers'), dict) else {}
+        except:
+            job = {}
+            grower = {}
+        
+        # Get worker details
+        worker_name = 'Unknown Worker'
+        worker_phone = 'N/A'
+        
+        if app.get('worker_id'):
+            try:
+                # Try to get worker and user info
+                worker_response = supabase.table("workers").select("*, users(*)").eq("user_id", app['worker_id']).execute()
+                if worker_response.data:
+                    worker = worker_response.data[0]
+                    user = worker.get('users', {}) if isinstance(worker.get('users'), dict) else {}
+                    worker_name = user.get('name', 'Unknown Worker')
+                    worker_phone = user.get('phone', 'N/A')
+                else:
+                    # Try direct user lookup
+                    user_response = supabase.table("users").select("*").eq("id", app['worker_id']).execute()
+                    if user_response.data:
+                        user = user_response.data[0]
+                        worker_name = user.get('name', 'Unknown Worker')
+                        worker_phone = user.get('phone', 'N/A')
+            except:
+                pass
+        
+        applications.append({
+            'id': app['id'],
+            'job_id': app['job_id'],
+            'job_title': job.get('title', 'Unknown Job'),
+            'worker_id': app.get('worker_id'),
+            'worker_name': worker_name,
+            'worker_phone': worker_phone,
+            'status': app.get('status', 'pending'),
+            'audio_url': app.get('audio_url'),
+            'notes': app.get('notes'),
+            'submitted_at': app.get('submitted_at', ''),
+            'grower_id': grower.get('user_id') if grower else job.get('grower_id'),
+            'farm_name': grower.get('farm_name', 'Unknown Farm') if grower else None,
+        })
+    
+    return applications
+
+
+@app.patch("/applications/{application_id}")
+async def update_application_status(
+    application_id: int,
+    update: ApplicationStatusUpdate
+):
+    """Update application status (accept/reject)."""
+    if update.status not in ['pending', 'accepted', 'rejected']:
+        raise HTTPException(status_code=400, detail="Invalid status")
+    
+    response = supabase.table("applications").update({
+        'status': update.status
+    }).eq("id", application_id).execute()
+    
+    if not response.data:
+        raise HTTPException(status_code=404, detail="Application not found")
+    
+    # Also update the associated contract if it exists
+    contract_response = supabase.table("contracts").select("*").eq("application_id", application_id).execute()
+    if contract_response.data:
+        contract_status = 'accepted' if update.status == 'accepted' else 'pending'
+        supabase.table("contracts").update({
+            'status': contract_status
+        }).eq("application_id", application_id).execute()
+    
+    return {"message": f"Application {application_id} status updated to {update.status}"}
 
 
 @app.get("/stats", response_model=StatsResponse)

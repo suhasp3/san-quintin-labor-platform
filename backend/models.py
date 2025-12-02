@@ -44,6 +44,8 @@ class Contract(BaseModel):
 class ContractCreate(BaseModel):
     job_id: int
     worker_id: Optional[str] = None  # UUID string
+    audio_url: Optional[str] = None  # URL of uploaded voice recording
+    notes: Optional[str] = None  # Text application notes
 
 
 class ContractUpdate(BaseModel):
@@ -57,4 +59,23 @@ class StatsResponse(BaseModel):
     weekly_applications: list
     labor_demand_forecast: list
     category_stats: list
+
+
+class ApplicationResponse(BaseModel):
+    id: int
+    job_id: int
+    job_title: str
+    worker_id: Optional[str] = None
+    worker_name: Optional[str] = None
+    worker_phone: Optional[str] = None
+    status: str
+    audio_url: Optional[str] = None
+    notes: Optional[str] = None
+    submitted_at: Optional[str] = None
+    grower_id: Optional[str] = None
+    farm_name: Optional[str] = None
+
+
+class ApplicationStatusUpdate(BaseModel):
+    status: str  # 'pending', 'accepted', 'rejected'
 

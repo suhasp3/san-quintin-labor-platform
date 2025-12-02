@@ -10,7 +10,7 @@ import {
   LineChart,
   Line,
 } from "recharts";
-import { Activity, Shield, Signal } from "lucide-react";
+import { Activity, Shield, Signal, FileText, Mic, CheckCircle2, XCircle, Clock } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import {
@@ -18,7 +18,11 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
+  CardDescription,
 } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface Stats {
   active_jobs: number;
@@ -29,9 +33,27 @@ interface Stats {
   category_stats: Array<{ category: string; jobs: number; workers: number }>;
 }
 
+interface Application {
+  id: number;
+  job_id: number;
+  job_title: string;
+  worker_id?: string;
+  worker_name?: string;
+  worker_phone?: string;
+  status: 'pending' | 'accepted' | 'rejected';
+  audio_url?: string;
+  notes?: string;
+  submitted_at?: string;
+  grower_id?: string;
+  farm_name?: string;
+}
+
 export default function AdminPage() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [applications, setApplications] = useState<Application[]>([]);
+  const [applicationsLoading, setApplicationsLoading] = useState(true);
+  const [filterStatus, setFilterStatus] = useState<string>("all");
 
   useEffect(() => {
     let mounted = true;
@@ -64,6 +86,42 @@ export default function AdminPage() {
     };
   }, []);
 
+  useEffect(() => {
+    let mounted = true;
+    
+    const fetchApplications = async () => {
+      try {
+        setApplicationsLoading(true);
+        let url = "http://localhost:8000/applications";
+        if (filterStatus !== "all") {
+          url += `?status=${filterStatus}`;
+        }
+        
+        const response = await fetch(url);
+        if (response.ok) {
+          const data = await response.json();
+          if (data && mounted) {
+            setApplications(data);
+          }
+        } else {
+          console.warn("Applications API returned non-OK status:", response.status);
+        }
+      } catch (error) {
+        console.error("Error fetching applications:", error);
+      } finally {
+        if (mounted) {
+          setApplicationsLoading(false);
+        }
+      }
+    };
+    
+    fetchApplications();
+    
+    return () => {
+      mounted = false;
+    };
+  }, [filterStatus]);
+
   // Fallback data if API fails
   const jobStats =
     stats?.weekly_jobs.map((day, index) => ({
@@ -93,6 +151,22 @@ export default function AdminPage() {
     { category: "Tomato", jobs: 0, workers: 0 },
     { category: "Strawberry", jobs: 0, workers: 0 },
   ];
+
+  const getStatusColor = (status: Application['status']) => {
+    switch (status) {
+      case "accepted": return "bg-green-100 text-green-700 border-green-200";
+      case "rejected": return "bg-red-100 text-red-700 border-red-200";
+      default: return "bg-amber-100 text-amber-800 border-amber-200";
+    }
+  };
+
+  const getStatusIcon = (status: Application['status']) => {
+    switch (status) {
+      case "accepted": return <CheckCircle2 className="h-4 w-4" />;
+      case "rejected": return <XCircle className="h-4 w-4" />;
+      default: return <Clock className="h-4 w-4" />;
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-900 via-slate-900 to-slate-800 pb-24 text-white">
@@ -228,6 +302,90 @@ export default function AdminPage() {
                 </CardContent>
               </Card>
             </div>
+
+            <Card className="border-0 bg-white">
+              <CardHeader>
+                <CardTitle>Job Applications</CardTitle>
+                <CardDescription>
+                  Review and manage all job applications from workers
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Tabs value={filterStatus} onValueChange={setFilterStatus} className="mb-4">
+                  <TabsList>
+                    <TabsTrigger value="all">All</TabsTrigger>
+                    <TabsTrigger value="pending">Pending</TabsTrigger>
+                    <TabsTrigger value="accepted">Accepted</TabsTrigger>
+                    <TabsTrigger value="rejected">Rejected</TabsTrigger>
+                  </TabsList>
+                </Tabs>
+
+                {applicationsLoading ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    Loading applications...
+                  </div>
+                ) : applications.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <FileText className="mx-auto h-10 w-10 mb-2 opacity-50" />
+                    <p>No applications found</p>
+                  </div>
+                ) : (
+                  <ScrollArea className="h-[400px]">
+                    <div className="space-y-3 pr-4">
+                      {applications.map((app) => (
+                        <Card key={app.id} className="border border-border/70">
+                          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+                            <div>
+                              <CardTitle className="text-base">{app.job_title}</CardTitle>
+                              <CardDescription className="text-sm">
+                                {app.worker_name} • {app.worker_phone}
+                                {app.farm_name && ` • ${app.farm_name}`}
+                              </CardDescription>
+                            </div>
+                            <Badge className={getStatusColor(app.status)}>
+                              <span className="flex items-center gap-1">
+                                {getStatusIcon(app.status)}
+                                {app.status.charAt(0).toUpperCase() + app.status.slice(1)}
+                              </span>
+                            </Badge>
+                          </CardHeader>
+                          <CardContent className="space-y-2 text-sm">
+                            {app.audio_url && (
+                              <div className="flex items-center gap-2 text-muted-foreground">
+                                <Mic className="h-4 w-4 text-blue-600" />
+                                <span>Voice Application:</span>
+                                <a 
+                                  href={app.audio_url} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer" 
+                                  className="text-blue-500 hover:underline"
+                                >
+                                  Listen
+                                </a>
+                              </div>
+                            )}
+                            {app.notes && (
+                              <div className="flex items-start gap-2">
+                                <FileText className="h-4 w-4 text-blue-600 mt-1" />
+                                <div className="flex-1">
+                                  <span className="font-medium text-foreground">Text Application:</span>
+                                  <p className="mt-1 text-sm bg-muted/50 p-2 rounded-md">{app.notes}</p>
+                                </div>
+                              </div>
+                            )}
+                            {app.submitted_at && (
+                              <p className="text-xs text-muted-foreground">
+                                Submitted: {new Date(app.submitted_at).toLocaleString()}
+                              </p>
+                            )}
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  </ScrollArea>
+                )}
+              </CardContent>
+            </Card>
           </>
         )}
       </main>

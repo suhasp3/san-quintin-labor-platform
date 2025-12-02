@@ -10,7 +10,24 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "../contexts/AuthContext";
 
 export default function JobsPage() {
-  const { user } = useAuth();
+  let authContext;
+  try {
+    authContext = useAuth();
+  } catch (error) {
+    console.error('Error getting auth context in JobsPage:', error);
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <div className="max-w-md text-center space-y-4">
+          <div className="text-red-600 text-lg font-semibold">⚠️ Authentication Error</div>
+          <p className="text-muted-foreground">
+            There was an issue loading your authentication. Please refresh the page.
+          </p>
+        </div>
+      </div>
+    );
+  }
+  
+  const { user } = authContext;
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -68,20 +85,46 @@ export default function JobsPage() {
 
   const handleApply = async (jobId: number, audioBlob?: Blob) => {
     try {
-      // In a real app, you would upload the audio blob to the server
+      let audioUrl: string | undefined = undefined;
+
+      // Upload audio to Supabase storage if provided
       if (audioBlob) {
-        console.log("Audio blob size:", audioBlob.size);
-        // You could upload it here: await uploadAudio(jobId, audioBlob);
+        try {
+          console.log("Uploading audio file...", audioBlob.size, "bytes");
+          // Dynamically import to avoid crashing if storage module has issues
+          const { uploadAudioFile } = await import("../lib/storage");
+          audioUrl = await uploadAudioFile(audioBlob, `job-${jobId}`);
+          console.log("Audio uploaded successfully:", audioUrl);
+        } catch (uploadError) {
+          console.error("Error uploading audio:", uploadError);
+          const errorMessage = uploadError instanceof Error 
+            ? uploadError.message 
+            : "Unknown error";
+          
+          // Ask user if they want to continue without audio
+          const continueWithoutAudio = confirm(
+            `Failed to upload audio recording: ${errorMessage}\n\n` +
+            "Would you like to submit the application without the audio recording?"
+          );
+          
+          if (!continueWithoutAudio) {
+            return; // User cancelled
+          }
+          // Continue without audio_url
+        }
       }
 
       // Create contract via API with authentication
       try {
         const { authenticatedFetch } = await import("../lib/api");
         
-        // Include worker_id if user is logged in
+        // Include worker_id and audio_url if available
         const requestBody: any = { job_id: jobId };
         if (user?.id) {
           requestBody.worker_id = user.id;
+        }
+        if (audioUrl) {
+          requestBody.audio_url = audioUrl;
         }
         
         const response = await authenticatedFetch("http://localhost:8000/contracts", {

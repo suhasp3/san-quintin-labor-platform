@@ -6,6 +6,7 @@ import {
   LineChart,
   LogOut,
   User,
+  ClipboardList,
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { Button } from "./ui/button";
@@ -36,6 +37,7 @@ export default function Navbar() {
     { path: "/jobs", icon: Briefcase, label: "Jobs", roles: ['worker', 'admin'] as const },
     { path: "/my-contracts", icon: FileText, label: "Contracts", roles: ['worker', 'admin'] as const },
     { path: "/dashboard", icon: LayoutDashboard, label: "Post Job", roles: ['grower', 'admin'] as const },
+    { path: "/applications", icon: ClipboardList, label: "Applications", roles: ['grower', 'admin'] as const },
     { path: "/admin", icon: LineChart, label: "Admin", roles: ['admin'] as const },
   ];
 
