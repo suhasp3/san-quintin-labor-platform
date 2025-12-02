@@ -2,7 +2,6 @@ from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from datetime import datetime, timedelta
 from typing import List, Optional
-from supabase import Client
 
 from models import Job, JobCreate, JobResponse, Contract, ContractCreate, ContractUpdate, StatsResponse, ApplicationResponse, ApplicationStatusUpdate
 from db import supabase
@@ -13,7 +12,7 @@ app = FastAPI(title="Mexico Labor Project API", version="1.0.0")
 # CORS middleware to allow frontend requests
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:3000"],  # Vite default port
+    allow_origins=["http://localhost:5173", "http://localhost:3000", "https://san-quintin-labor-platform.vercel.app/"],  # Vite default port
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
