@@ -1,4 +1,4 @@
-import { Component, ErrorInfo, ReactNode } from 'react';
+import { type ReactNode } from 'react';
 import ErrorBoundary from './ErrorBoundary';
 
 interface SafeRouteProps {

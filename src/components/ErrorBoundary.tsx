@@ -1,4 +1,4 @@
-import React, { Component, ErrorInfo, ReactNode } from 'react';
+import { Component, type ErrorInfo, type ReactNode } from 'react';
 
 interface Props {
   children: ReactNode;
@@ -64,7 +64,7 @@ class ErrorBoundary extends Component<Props, State> {
             <p className="text-gray-600">
               An unexpected error occurred. The page couldn't load properly.
             </p>
-            {process.env.NODE_ENV === 'development' && this.state.error && (
+            {this.state.error && (
               <div className="rounded-lg bg-gray-100 p-3 text-sm">
                 <p className="font-mono text-xs text-gray-800 break-all">
                   {this.state.error.toString()}
